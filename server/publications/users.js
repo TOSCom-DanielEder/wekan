@@ -23,6 +23,9 @@ Meteor.publish('user-admin', function() {
   return Meteor.users.find(this.userId, {
     fields: {
       isAdmin: 1,
+      teams: 1,
+      orgs: 1,
+      authenticationMethod: 1,
     },
   });
 });
@@ -34,6 +37,8 @@ Meteor.publish('user-authenticationMethod', function(match) {
     {
       fields: {
         authenticationMethod: 1,
+        teams: 1,
+        orgs: 1,
       },
     },
   );

@@ -1,8 +1,8 @@
-FROM quay.io/wekan/ubuntu:groovy-20210115
+FROM quay.io/wekan/ubuntu:hirsute-20210825
 LABEL maintainer="wekan"
 
-# 2020-12-03:
-# - Above Ubuntu base image copied from Docker Hub ubuntu:groovy-20201125.2
+# 2021-09-18:
+# - Above Ubuntu base image copied from Docker Hub ubuntu:hirsute-20210825
 #   to Quay to avoid Docker Hub rate limits.
 
 # Set the environment variables (defaults where required)
@@ -12,7 +12,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 ENV BUILD_DEPS="apt-utils libarchive-tools gnupg gosu wget curl bzip2 g++ build-essential git ca-certificates python3" \
     DEBUG=false \
-    NODE_VERSION=v12.22.1 \
+    NODE_VERSION=v12.22.6 \
     METEOR_RELEASE=1.10.2 \
     USE_EDGE=false \
     METEOR_EDGE=1.5-beta.17 \
@@ -64,6 +64,9 @@ ENV BUILD_DEPS="apt-utils libarchive-tools gnupg gosu wget curl bzip2 g++ build-
     LDAP_ENABLE=false \
     LDAP_PORT=389 \
     LDAP_HOST="" \
+    LDAP_AD_SIMPLE_AUTH="" \
+    LDAP_USER_AUTHENTICATION=false \
+    LDAP_USER_AUTHENTICATION_FIELD=uid \
     LDAP_BASEDN="" \
     LDAP_LOGIN_FALLBACK=false \
     LDAP_RECONNECT=true \
@@ -81,8 +84,6 @@ ENV BUILD_DEPS="apt-utils libarchive-tools gnupg gosu wget curl bzip2 g++ build-
     LDAP_ENCRYPTION=false \
     LDAP_CA_CERT="" \
     LDAP_REJECT_UNAUTHORIZED=false \
-    LDAP_USER_AUTHENTICATION=false \
-    LDAP_USER_AUTHENTICATION_FIELD=uid \
     LDAP_USER_SEARCH_FILTER="" \
     LDAP_USER_SEARCH_SCOPE="" \
     LDAP_USER_SEARCH_FIELD="" \
@@ -137,7 +138,8 @@ ENV BUILD_DEPS="apt-utils libarchive-tools gnupg gosu wget curl bzip2 g++ build-
     SAML_IDENTIFIER_FORMAT="" \
     SAML_LOCAL_PROFILE_MATCH_ATTRIBUTE="" \
     SAML_ATTRIBUTES="" \
-    ORACLE_OIM_ENABLED=false
+    ORACLE_OIM_ENABLED=false \
+    WAIT_SPINNER=""
 
 # Copy the app to the image
 COPY ${SRC_PATH} /home/wekan/app

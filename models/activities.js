@@ -153,7 +153,9 @@ if (Meteor.isServer) {
     }
     if (activity.listId) {
       const list = activity.list();
-      watchers = _.union(watchers, list.watchers || []);
+      if (list.watchers !== undefined) {
+        watchers = _.union(watchers, list.watchers || []);
+      }
       params.list = list.title;
       params.listId = activity.listId;
     }
@@ -210,15 +212,30 @@ if (Meteor.isServer) {
             // ignore commenter mention himself?
             continue;
           }
-          const atUser = _.findWhere(knownUsers, { username });
-          if (!atUser) {
-            continue;
+
+          if (activity.boardId && username === 'board_members') {
+            // mentions all board members
+            const knownUids = knownUsers.map(u => u.userId);
+            watchers = _.union(watchers, [...knownUids]);
+            title = 'act-atUserComment';
+          } else if (activity.cardId && username === 'card_members') {
+            // mentions all card members if assigned
+            const card = activity.card();
+            watchers = _.union(watchers, [...card.members]);
+            title = 'act-atUserComment';
+          } else {
+            const atUser = _.findWhere(knownUsers, { username });
+            if (!atUser) {
+              continue;
+            }
+
+            const uid = atUser.userId;
+            params.atUsername = username;
+            params.atEmails = atUser.emails;
+            title = 'act-atUserComment';
+            watchers = _.union(watchers, [uid]);
           }
-          const uid = atUser.userId;
-          params.atUsername = username;
-          params.atEmails = atUser.emails;
-          title = 'act-atUserComment';
-          watchers = _.union(watchers, [uid]);
+
         }
       }
       params.commentId = comment._id;

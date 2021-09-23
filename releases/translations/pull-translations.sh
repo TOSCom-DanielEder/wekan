@@ -27,6 +27,9 @@ tx pull -f -l zh_CN
 echo "Chinese (Hong Kong):"
 tx pull -f -l zh_HK
 
+echo "Chinese Simplified (zh-Hans):"
+tx pull -f -l zh_Hans
+
 echo "Chinese (Taiwan):"
 tx pull -f -l zh_TW
 
@@ -45,6 +48,9 @@ tx pull -f -l nl
 echo "Esperanto:"
 tx pull -f -l eo
 
+echo "English (Italy):"
+tx pull -f -l en_IT
+
 echo "English (United Kingdom):"
 tx pull -f -l en_GB
 
@@ -53,6 +59,9 @@ tx pull -f -l fi
 
 echo "French:"
 tx pull -f -l fr
+
+echo "French (Switzerland):"
+tx pull -f -l fr_CH
 
 echo "Galician:"
 tx pull -f -l gl
@@ -63,7 +72,7 @@ tx pull -f -l ka
 echo "German:"
 tx pull -f -l de
 
-echo "German (Switzerland):"
+echo "German (Switzerland) => Deutsch (Schweiz):"
 tx pull -f -l de_CH
 
 echo "Greek:"

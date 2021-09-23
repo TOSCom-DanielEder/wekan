@@ -1,7 +1,7 @@
 swagger: '2.0'
 info:
   title: Wekan REST API
-  version: v5.22
+  version: v5.60
   description: |
     The REST API allows you to control and extend Wekan with ease.
 
@@ -960,6 +960,12 @@ paths:
             should the label of the custom field be shown on minicards?
           type: boolean
           required: true
+        - name: showSumAtTopOfList
+          in: formData
+          description: |
+            should the sum of the custom fields be shown at top of list?
+          type: boolean
+          required: true
         - name: authorId
           in: formData
           description: the authorId value
@@ -1066,6 +1072,12 @@ paths:
           in: formData
           description: |
             should the label of the custom field be shown on minicards
+          type: boolean
+          required: true
+        - name: showSumAtTopOfList
+          in: formData
+          description: |
+            should the sum of the custom fields be shown at top of list
           type: boolean
           required: true
         - name: board
@@ -1875,6 +1887,12 @@ paths:
             the vote object
           type: object
           required: false
+        - name: poker
+          in: formData
+          description: |
+            the poker object
+          type: object
+          required: false
         - name: labelIds
           in: formData
           description: |
@@ -2670,6 +2688,7 @@ definitions:
         type: array
         items:
           $ref: "#/definitions/BoardsLabels"
+        x-nullable: true
       members:
         description: |
            List of members of a board
@@ -2683,6 +2702,20 @@ definitions:
         enum:
           - public
           - private
+      orgs:
+        description: |
+           the list of organizations that a board belongs to
+        type: array
+        items:
+          $ref: "#/definitions/BoardsOrgs"
+        x-nullable: true
+      teams:
+        description: |
+           the list of teams that a board belongs to
+        type: array
+        items:
+          $ref: "#/definitions/BoardsTeams"
+        x-nullable: true
       color:
         description: |
            The color of the board.
@@ -2749,6 +2782,10 @@ definitions:
         description: |
            Does the board allows description text?
         type: boolean
+      allowsCardNumber:
+        description: |
+           Does the board allows card numbers?
+        type: boolean
       allowsActivities:
         description: |
            Does the board allows comments?
@@ -2772,6 +2809,10 @@ definitions:
       allowsRequestedBy:
         description: |
            Does the board allows requested by?
+        type: boolean
+      allowsCardSortingByNumber:
+        description: |
+           Does the board allows card sorting by number?
         type: boolean
       allowsAssignedBy:
         description: |
@@ -2809,6 +2850,11 @@ definitions:
           - subtext-with-full-path
           - subtext-with-parent
           - no-parent
+        x-nullable: true
+      receivedAt:
+        description: |
+           Date the card was received
+        type: string
         x-nullable: true
       startAt:
         description: |
@@ -2854,7 +2900,6 @@ definitions:
       - archived
       - createdAt
       - stars
-      - labels
       - members
       - permission
       - color
@@ -2864,12 +2909,14 @@ definitions:
       - allowsComments
       - allowsDescriptionTitle
       - allowsDescriptionText
+      - allowsCardNumber
       - allowsActivities
       - allowsLabels
       - allowsCreator
       - allowsAssignee
       - allowsMembers
       - allowsRequestedBy
+      - allowsCardSortingByNumber
       - allowsAssignedBy
       - allowsReceivedDate
       - allowsStartDate
@@ -2957,6 +3004,44 @@ definitions:
     required:
       - userId
       - isAdmin
+      - isActive
+  BoardsOrgs:
+    type: object
+    properties:
+      orgId:
+        description: |
+           The uniq ID of the organization
+        type: string
+      orgDisplayName:
+        description: |
+           The display name of the organization
+        type: string
+      isActive:
+        description: |
+           Is the organization active?
+        type: boolean
+    required:
+      - orgId
+      - orgDisplayName
+      - isActive
+  BoardsTeams:
+    type: object
+    properties:
+      teamId:
+        description: |
+           The uniq ID of the team
+        type: string
+      teamDisplayName:
+        description: |
+           The display name of the team
+        type: string
+      isActive:
+        description: |
+           Is the team active?
+        type: boolean
+    required:
+      - teamId
+      - teamDisplayName
       - isActive
   CardComments:
     type: object
@@ -3156,6 +3241,7 @@ definitions:
         description: |
            Sort value
         type: number
+        x-nullable: true
       subtaskSort:
         description: |
            subtask sort value
@@ -3175,6 +3261,41 @@ definitions:
            vote object, see below
         $ref: "#/definitions/CardsVote"
         x-nullable: true
+      poker:
+        description: |
+           poker object, see below
+        $ref: "#/definitions/CardsPoker"
+        x-nullable: true
+      targetId_gantt:
+        description: |
+           ID of card which is the child link in gantt view
+        type: array
+        items:
+          type: string
+          x-nullable: true
+        x-nullable: true
+      linkType_gantt:
+        description: |
+           ID of card which is the parent link in gantt view
+        type: array
+        items:
+          type: number
+          x-nullable: true
+        x-nullable: true
+      linkId_gantt:
+        description: |
+           ID of card which is the parent link in gantt view
+        type: array
+        items:
+          type: string
+          x-nullable: true
+        x-nullable: true
+      cardNumber:
+        description: |
+           A boardwise sequentially increasing number that is assigned
+           to every newly created card
+        type: number
+        x-nullable: true
     required:
       - archived
       - swimlaneId
@@ -3182,7 +3303,6 @@ definitions:
       - modifiedAt
       - dateLastActivity
       - userId
-      - sort
       - type
   CardsVote:
     type: object
@@ -3212,6 +3332,92 @@ definitions:
     required:
       - question
       - public
+      - allowNonBoardMembers
+  CardsPoker:
+    type: object
+    properties:
+      question:
+        type: boolean
+      one:
+        description: |
+           poker card one
+        type: array
+        items:
+          type: string
+          x-nullable: true
+      two:
+        description: |
+           poker card two
+        type: array
+        items:
+          type: string
+          x-nullable: true
+      three:
+        description: |
+           poker card three
+        type: array
+        items:
+          type: string
+          x-nullable: true
+      five:
+        description: |
+           poker card five
+        type: array
+        items:
+          type: string
+          x-nullable: true
+      eight:
+        description: |
+           poker card eight
+        type: array
+        items:
+          type: string
+          x-nullable: true
+      thirteen:
+        description: |
+           poker card thirteen
+        type: array
+        items:
+          type: string
+          x-nullable: true
+      twenty:
+        description: |
+           poker card twenty
+        type: array
+        items:
+          type: string
+          x-nullable: true
+      forty:
+        description: |
+           poker card forty
+        type: array
+        items:
+          type: string
+          x-nullable: true
+      oneHundred:
+        description: |
+           poker card oneHundred
+        type: array
+        items:
+          type: string
+          x-nullable: true
+      unsure:
+        description: |
+           poker card unsure
+        type: array
+        items:
+          type: string
+          x-nullable: true
+      end:
+        type: string
+      allowNonBoardMembers:
+        type: boolean
+      estimation:
+        description: |
+           poker estimation value
+        type: number
+    required:
+      - question
       - allowNonBoardMembers
   CardsCustomfields:
     type: object
@@ -3330,6 +3536,10 @@ definitions:
         description: |
            should the label of the custom field be shown on minicards?
         type: boolean
+      showSumAtTopOfList:
+        description: |
+           should the sum of the custom fields be shown at top of list?
+        type: boolean
       createdAt:
         type: string
         x-nullable: true
@@ -3344,6 +3554,7 @@ definitions:
       - automaticallyOnCard
       - alwaysOnCard
       - showLabelOnMiniCard
+      - showSumAtTopOfList
       - modifiedAt
   CustomFieldsSettings:
     type: object
@@ -3617,6 +3828,20 @@ definitions:
            the username of the user
         type: string
         x-nullable: true
+      orgs:
+        description: |
+           the list of organizations that a user belongs to
+        type: array
+        items:
+          $ref: "#/definitions/UsersOrgs"
+        x-nullable: true
+      teams:
+        description: |
+           the list of teams that a user belongs to
+        type: array
+        items:
+          $ref: "#/definitions/UsersTeams"
+        x-nullable: true
       emails:
         description: |
            the list of emails attached to a user
@@ -3681,20 +3906,6 @@ definitions:
       - createdAt
       - modifiedAt
       - authenticationMethod
-  UsersEmails:
-    type: object
-    properties:
-      address:
-        description: |
-           The email address
-        type: string
-      verified:
-        description: |
-           Has the email been verified
-        type: boolean
-    required:
-      - address
-      - verified
   UsersProfile:
     type: object
     properties:
@@ -3715,11 +3926,19 @@ definitions:
         type: string
       showDesktopDragHandles:
         description: |
-           does the user want to hide system messages?
+           does the user want to show desktop drag handles?
         type: boolean
       hideCheckedItems:
         description: |
            does the user want to hide checked checklist items?
+        type: boolean
+      cardMaximized:
+        description: |
+           has user clicked maximize card?
+        type: boolean
+      customFieldsGrid:
+        description: |
+           has user at card Custom Fields have Grid (false) or one per row (true) layout?
         type: boolean
       hiddenSystemMessages:
         description: |
@@ -3750,14 +3969,6 @@ definitions:
         type: array
         items:
           $ref: "#/definitions/UsersProfileNotifications"
-      activity:
-        description: |
-           The id of the activity this notification references
-        type: string
-      read:
-        description: |
-           the date on which this notification was read
-        type: string
       showCardsCountAt:
         description: |
            showCardCountAt field of the user
@@ -3813,7 +4024,6 @@ definitions:
            Reference to the board templates swimlane Id
         type: string
     required:
-      - activity
       - templatesBoardId
       - cardTemplatesSwimlaneId
       - listTemplatesSwimlaneId
@@ -3823,9 +4033,61 @@ definitions:
     properties:
       totalHits:
         description: |
-           Total hits from last search
-        type: number
-      lastHit:
-        description: |
+           Total hits from last searchquery['members.userId'] = Meteor.userId();
            last hit that was returned
         type: number
+  UsersOrgs:
+    type: object
+    properties:
+      orgId:
+        description: |
+           The uniq ID of the organization
+        type: string
+      orgDisplayName:
+        description: |
+           The display name of the organization
+        type: string
+    required:
+      - orgId
+      - orgDisplayName
+  UsersTeams:
+    type: object
+    properties:
+      teamId:
+        description: |
+           The uniq ID of the team
+        type: string
+      teamDisplayName:
+        description: |
+           The display name of the team
+        type: string
+    required:
+      - teamId
+      - teamDisplayName
+  UsersEmails:
+    type: object
+    properties:
+      address:
+        description: |
+           The email address
+        type: string
+      verified:
+        description: |
+           Has the email been verified
+        type: boolean
+    required:
+      - address
+      - verified
+  UsersProfileNotifications:
+    type: object
+    properties:
+      activity:
+        description: |
+           The id of the activity this notification references
+        type: string
+      read:
+        description: |
+           the date on which this notification was read
+        type: string
+    required:
+      - activity

@@ -109,6 +109,8 @@ Boards.attachSchema(
        * List of labels attached to a board
        */
       type: [Object],
+      optional: true,
+      /* Commented out, so does not create labels to new boards.
       // eslint-disable-next-line consistent-return
       autoValue() {
         if (this.isInsert && !this.isSet) {
@@ -122,6 +124,7 @@ Boards.attachSchema(
           }));
         }
       },
+      */
     },
     'labels.$._id': {
       /**
@@ -224,6 +227,56 @@ Boards.attachSchema(
       type: String,
       allowedValues: ['public', 'private'],
     },
+    orgs: {
+      /**
+       * the list of organizations that a board belongs to
+       */
+       type: [Object],
+       optional: true,
+    },
+    'orgs.$.orgId':{
+      /**
+       * The uniq ID of the organization
+       */
+       type: String,
+    },
+    'orgs.$.orgDisplayName':{
+      /**
+       * The display name of the organization
+       */
+       type: String,
+    },
+    'orgs.$.isActive': {
+      /**
+       * Is the organization active?
+       */
+      type: Boolean,
+    },
+    teams: {
+      /**
+       * the list of teams that a board belongs to
+       */
+       type: [Object],
+       optional: true,
+    },
+    'teams.$.teamId':{
+      /**
+       * The uniq ID of the team
+       */
+       type: String,
+    },
+    'teams.$.teamDisplayName':{
+      /**
+       * The display name of the team
+       */
+       type: String,
+    },
+    'teams.$.isActive': {
+      /**
+       * Is the team active?
+       */
+      type: Boolean,
+    },
     color: {
       /**
        * The color of the board.
@@ -322,6 +375,14 @@ Boards.attachSchema(
       defaultValue: true,
     },
 
+    allowsCardNumber: {
+      /**
+       * Does the board allows card numbers?
+       */
+      type: Boolean,
+      defaultValue: false,
+    },
+
     allowsActivities: {
       /**
        * Does the board allows comments?
@@ -365,6 +426,14 @@ Boards.attachSchema(
     allowsRequestedBy: {
       /**
        * Does the board allows requested by?
+       */
+      type: Boolean,
+      defaultValue: true,
+    },
+
+    allowsCardSortingByNumber: {
+      /**
+       * Does the board allows card sorting by number?
        */
       type: Boolean,
       defaultValue: true,
@@ -430,6 +499,13 @@ Boards.attachSchema(
       ],
       optional: true,
       defaultValue: 'no-parent',
+    },
+    receivedAt: {
+      /**
+       * Date the card was received
+       */
+      type: Date,
+      optional: true,
     },
     startAt: {
       /**
@@ -680,9 +756,48 @@ Boards.helpers({
     return Activities.find({ boardId: this._id }, { sort: { createdAt: -1 } });
   },
 
-  activeMembers() {
+  activeMembers(){
     return _.where(this.members, { isActive: true });
   },
+
+  activeMembers2(members, boardTeamUsers) {
+    let allMembers = members;
+    if(this.teams !== undefined && this.teams.length > 0){
+      let index;
+      if(boardTeamUsers && boardTeamUsers.count() > 0){
+        boardTeamUsers.forEach((u) => {
+          index = allMembers.findIndex(function(m){ return m.userId == u._id});
+          if(index == -1){
+            allMembers.push({
+              "isActive": true,
+              "isAdmin": u.isAdmin !== undefined ? u.isAdmin : false,
+              "isCommentOnly" : false,
+              "isNoComments" : false,
+              "userId": u._id,
+            });
+          }
+        });
+      }
+    }
+
+    return allMembers;
+  },
+
+  activeOrgs() {
+    return _.where(this.orgs, { isActive: true });
+  },
+
+  // hasNotAnyOrg(){
+  //   return this.orgs === undefined || this.orgs.length <= 0;
+  // },
+
+  activeTeams() {
+    return _.where(this.teams, { isActive: true });
+  },
+
+  // hasNotAnyTeam(){
+  //   return this.teams === undefined || this.teams.length <= 0;
+  // },
 
   activeAdmins() {
     return _.where(this.members, { isActive: true, isAdmin: true });
@@ -978,6 +1093,26 @@ Boards.helpers({
     return result;
   },
 
+  getNextCardNumber() {
+    const boardCards = Cards.find(
+      {
+        boardId: this._id
+      },
+      {
+        sort: { cardNumber: -1 },
+        limit: 1
+      }
+    ).fetch();
+
+    // If no card is assigned to the board, return 1
+    if (!boardCards || boardCards.length === 0) {
+      return 1;
+    }
+
+    const maxCardNr = !!boardCards[0].cardNumber ? boardCards[0].cardNumber : 0;
+    return maxCardNr + 1;
+  },
+
   cardsDueInBetween(start, end) {
     return Cards.find({
       boardId: this._id,
@@ -1187,6 +1322,10 @@ Boards.mutations({
     return { $set: { allowsRequestedBy } };
   },
 
+  setAllowsCardSortingByNumber(allowsCardSortingByNumber) {
+    return { $set: { allowsCardSortingByNumber } };
+  },
+
   setAllowsAttachments(allowsAttachments) {
     return { $set: { allowsAttachments } };
   },
@@ -1201,6 +1340,10 @@ Boards.mutations({
 
   setAllowsDescriptionTitle(allowsDescriptionTitle) {
     return { $set: { allowsDescriptionTitle } };
+  },
+
+  setAllowsCardNumber(allowsCardNumber) {
+    return { $set: { allowsCardNumber } };
   },
 
   setAllowsDescriptionText(allowsDescriptionText) {
@@ -1407,13 +1550,18 @@ if (Meteor.isServer) {
     myLabelNames() {
       let names = [];
       Boards.userBoards(Meteor.userId()).forEach(board => {
-        names = names.concat(
-          board.labels
-            .filter(label => !!label.name)
-            .map(label => {
-              return label.name;
-            }),
-        );
+        // Only return labels when they exist.
+        if (board.labels !== undefined) {
+          names = names.concat(
+            board.labels
+              .filter(label => !!label.name)
+              .map(label => {
+                return label.name;
+              }),
+          );
+        } else {
+          return [];
+        }
       });
       return _.uniq(names).sort();
     },
@@ -1438,6 +1586,26 @@ if (Meteor.isServer) {
           return true;
         } else throw new Meteor.Error('error-board-notAMember');
       } else throw new Meteor.Error('error-board-doesNotExist');
+    },
+    setBoardOrgs(boardOrgsArray, currBoardId){
+      check(boardOrgsArray, Array);
+      check(currBoardId, String);
+      Boards.update(currBoardId, {
+        $set: {
+          orgs: boardOrgsArray,
+        },
+      });
+    },
+    setBoardTeams(boardTeamsArray, membersArray, currBoardId){
+      check(boardTeamsArray, Array);
+      check(membersArray, Array);
+      check(currBoardId, String);
+      Boards.update(currBoardId, {
+        $set: {
+          members: membersArray,
+          teams: boardTeamsArray,
+        },
+      });
     },
   });
 }
@@ -1663,7 +1831,8 @@ if (Meteor.isServer) {
                     */
   JsonRoutes.add('GET', '/api/boards', function(req, res) {
     try {
-      Authentication.checkUserId(req.userId);
+      const paramBoardId = req.params.boardId;
+      Authentication.checkBoardAccess(req.userId, paramBoardId);
       JsonRoutes.sendResult(res, {
         code: 200,
         data: Boards.find(
@@ -1837,7 +2006,8 @@ if (Meteor.isServer) {
    * @return_type string
    */
   JsonRoutes.add('PUT', '/api/boards/:boardId/labels', function(req, res) {
-    Authentication.checkUserId(req.userId);
+    const paramBoardId = req.params.boardId;
+    Authentication.checkBoardAccess(req.userId, paramBoardId);
     const id = req.params.boardId;
     try {
       if (req.body.hasOwnProperty('label')) {

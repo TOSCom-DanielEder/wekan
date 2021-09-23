@@ -1,4 +1,4 @@
-import sanitizeXss from 'xss';
+import DOMPurify from 'dompurify';
 
 const activitiesPerPage = 500;
 
@@ -113,8 +113,10 @@ BlazeComponent.extendComponent({
     ).getLabelById(lastLabelId);
     if (lastLabel && (lastLabel.name === undefined || lastLabel.name === '')) {
       return lastLabel.color;
-    } else {
+    } else if (lastLabel.name !== undefined && lastLabel.name !== '') {
       return lastLabel.name;
+    } else {
+      return null;
     }
   },
 
@@ -162,11 +164,15 @@ BlazeComponent.extendComponent({
             {
               href: source.url,
             },
-            sanitizeXss(source.system),
+            DOMPurify.sanitize(source.system, {
+              ALLOW_UNKNOWN_PROTOCOLS: true,
+            }),
           ),
         );
       } else {
-        return sanitizeXss(source.system);
+        return DOMPurify.sanitize(source.system, {
+          ALLOW_UNKNOWN_PROTOCOLS: true,
+        });
       }
     }
     return null;
@@ -190,10 +196,10 @@ BlazeComponent.extendComponent({
               href: attachment.url({ download: true }),
               target: '_blank',
             },
-            sanitizeXss(attachment.name()),
+            DOMPurify.sanitize(attachment.name()),
           ),
         )) ||
-      sanitizeXss(this.currentData().activity.attachmentName)
+      DOMPurify.sanitize(this.currentData().activity.attachmentName)
     );
   },
 
@@ -232,9 +238,63 @@ BlazeComponent.extendComponent({
 
 Template.activity.helpers({
   sanitize(value) {
-    return sanitizeXss(value);
+    return DOMPurify.sanitize(value, { ALLOW_UNKNOWN_PROTOCOLS: true });
   },
 });
+
+Template.commentReactions.events({
+  'click .reaction'(event) {
+    if (Meteor.user().isBoardMember()) {
+      const codepoint = event.currentTarget.dataset['codepoint'];
+      const commentId = Template.instance().data.commentId;
+      const cardComment = CardComments.findOne({_id: commentId});
+      cardComment.toggleReaction(codepoint);
+    }
+  },
+  'click .open-comment-reaction-popup': Popup.open('addReaction'),
+})
+
+Template.addReactionPopup.events({
+  'click .add-comment-reaction'(event) {
+    if (Meteor.user().isBoardMember()) {
+      const codepoint = event.currentTarget.dataset['codepoint'];
+      const commentId = Template.instance().data.commentId;
+      const cardComment = CardComments.findOne({_id: commentId});
+      cardComment.toggleReaction(codepoint);
+    }
+    Popup.close();
+  },
+})
+
+Template.addReactionPopup.helpers({
+  codepoints() {
+    // Starting set of unicode codepoints as comment reactions
+    return [
+      '&#128077;',
+      '&#128078;',
+      '&#128064;',
+      '&#9989;',
+      '&#10060;',
+      '&#128591;',
+      '&#128079;',
+      '&#127881;',
+      '&#128640;',
+      '&#128522;',
+      '&#129300;',
+      '&#128532;'];
+  }
+})
+
+Template.commentReactions.helpers({
+  isSelected(userIds) {
+    return userIds.includes(Meteor.user()._id);
+  },
+  userNames(userIds) {
+    return Users.find({_id: {$in: userIds}})
+                .map(user => user.profile.fullname)
+                .join(', ');
+  }
+})
 
 function createCardLink(card) {
   if (!card) return '';
@@ -246,7 +306,7 @@ function createCardLink(card) {
           href: card.originRelativeUrl(),
           class: 'action-card',
         },
-        sanitizeXss(card.title),
+        DOMPurify.sanitize(card.title, { ALLOW_UNKNOWN_PROTOCOLS: true }),
       ),
     )
   );
@@ -263,7 +323,7 @@ function createBoardLink(board, list) {
           href: board.originRelativeUrl(),
           class: 'action-board',
         },
-        sanitizeXss(text),
+        DOMPurify.sanitize(text, { ALLOW_UNKNOWN_PROTOCOLS: true }),
       ),
     )
   );

@@ -1,4 +1,5 @@
 import AccountSettings from '../models/accountSettings';
+import TableVisibilityModeSettings from '../models/tableVisibilityModeSettings';
 import Actions from '../models/actions';
 import Activities from '../models/activities';
 import Announcements from '../models/announcements';
@@ -645,6 +646,7 @@ Migrations.add('mutate-boardIds-in-customfields', () => {
 
 const modifiedAtTables = [
   AccountSettings,
+  TableVisibilityModeSettings,
   Actions,
   Activities,
   Announcements,
@@ -699,6 +701,7 @@ Migrations.add('add-missing-created-and-modified', () => {
 Migrations.add('fix-incorrect-dates', () => {
   const tables = [
     AccountSettings,
+    TableVisibilityModeSettings,
     Actions,
     Activities,
     Announcements,
@@ -1060,4 +1063,43 @@ Migrations.add('add-hide-logo-by-default', () => {
     },
     noValidateMulti,
   );
+});
+
+Migrations.add('add-card-number-allowed', () => {
+  Boards.update(
+    {
+      allowsCardNumber: {
+        $exists: false,
+      },
+    },
+    {
+      $set: {
+        allowsCardNumber: false,
+      },
+    },
+    noValidateMulti,
+  );
+});
+
+Migrations.add('assign-boardwise-card-numbers', () => {
+  Boards.find().forEach(board => {
+    let nextCardNumber = board.getNextCardNumber();
+    Cards.find(
+      {
+        boardId: board._id,
+        cardNumber: {
+          $exists: false
+        }
+      },
+      {
+        sort: { createdAt: 1 }
+      }
+    ).forEach(card => {
+      Cards.update(
+        card._id,
+        { $set: { cardNumber: nextCardNumber } },
+        noValidate);
+      nextCardNumber++;
+    });
+  })
 });

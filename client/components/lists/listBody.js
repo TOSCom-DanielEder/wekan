@@ -1,3 +1,5 @@
+import { Spinner } from '/client/lib/spinner';
+
 const subManager = new SubsManager();
 const InfiniteScrollIter = 10;
 
@@ -9,6 +11,13 @@ BlazeComponent.extendComponent({
 
   mixins() {
     return [];
+  },
+
+  customFieldsSum() {
+    return CustomFields.find({
+      boardIds: { $in: [Session.get('currentBoard')] },
+      showSumAtTopOfList: true,
+    });
   },
 
   openForm(options) {
@@ -79,7 +88,9 @@ BlazeComponent.extendComponent({
         Utils.boardView() === 'board-view-cal' ||
         !Utils.boardView()
       )
-        swimlaneId = board.getDefaultSwimline()._id;
+      swimlaneId = board.getDefaultSwimline()._id;
+
+      const nextCardNumber = board.getNextCardNumber();
 
       const _id = Cards.insert({
         title,
@@ -91,6 +102,7 @@ BlazeComponent.extendComponent({
         sort: sortIndex,
         swimlaneId,
         type: cardType,
+        cardNumber: nextCardNumber,
         linkedId,
       });
 
@@ -116,8 +128,6 @@ BlazeComponent.extendComponent({
       if (position === 'bottom') {
         this.scrollToBottom();
       }
-
-      formComponent.reset();
     }
   },
 
@@ -241,7 +251,7 @@ BlazeComponent.extendComponent({
       Boards.findOne(currentBoardId)
         .customFields()
         .fetch(),
-      function(field) {
+      function (field) {
         if (field.automaticallyOnCard || field.alwaysOnCard)
           arr.push({ _id: field._id, value: null });
       },
@@ -552,7 +562,7 @@ BlazeComponent.extendComponent({
       board = Boards.findOne((Meteor.user().profile || {}).templatesBoardId);
     } else {
       // Prefetch first non-current board id
-      board = Boards.findOne({
+      board = Boards.find({
         archived: false,
         'members.userId': Meteor.userId(),
         _id: {
@@ -698,7 +708,7 @@ BlazeComponent.extendComponent({
   },
 }).register('searchElementPopup');
 
-BlazeComponent.extendComponent({
+(class extends Spinner {
   onCreated() {
     this.cardlimit = this.parentComponent().cardlimit;
 
@@ -726,7 +736,7 @@ BlazeComponent.extendComponent({
         .parentComponent()
         .data()._id;
     }
-  },
+  }
 
   onRendered() {
     this.spinner = this.find('.sk-spinner-list');
@@ -741,21 +751,18 @@ BlazeComponent.extendComponent({
     );
 
     this.updateList();
-  },
+  }
 
   onDestroyed() {
     $(this.container).off(`scroll.spinner_${this.swimlaneId}_${this.listId}`);
     $(window).off(`resize.spinner_${this.swimlaneId}_${this.listId}`);
-  },
+  }
 
-  updateList() {
-    // Use fallback when requestIdleCallback is not available on iOS and Safari
-    // https://www.afasterweb.com/2017/11/20/utilizing-idle-moments/
-    checkIdleTime =
-      window.requestIdleCallback ||
-      function(handler) {
+  checkIdleTime() {
+    return window.requestIdleCallback ||
+      function (handler) {
         const startTime = Date.now();
-        return setTimeout(function() {
+        return setTimeout(function () {
           handler({
             didTimeout: false,
             timeRemaining() {
@@ -764,24 +771,38 @@ BlazeComponent.extendComponent({
           });
         }, 1);
       };
+  }
+
+  updateList() {
+    // Use fallback when requestIdleCallback is not available on iOS and Safari
+    // https://www.afasterweb.com/2017/11/20/utilizing-idle-moments/
 
     if (this.spinnerInView()) {
       this.cardlimit.set(this.cardlimit.get() + InfiniteScrollIter);
-      checkIdleTime(() => this.updateList());
+      this.checkIdleTime(() => this.updateList());
     }
-  },
+  }
 
   spinnerInView() {
-    const parentViewHeight = this.container.clientHeight;
-    const bottomViewPosition = this.container.scrollTop + parentViewHeight;
-
-    const threshold = this.spinner.offsetTop;
-
     // spinner deleted
     if (!this.spinner.offsetTop) {
       return false;
     }
 
-    return bottomViewPosition > threshold;
-  },
-}).register('spinnerList');
+    const parentViewHeight = this.container.clientHeight;
+    const bottomViewPosition = this.container.scrollTop + parentViewHeight;
+
+    let spinnerOffsetTop = this.spinner.offsetTop;
+
+    const addCard = $(this.container).find("a.open-minicard-composer").first()[0];
+    if (addCard !== undefined) {
+      spinnerOffsetTop -= addCard.clientHeight;
+    }
+
+    return bottomViewPosition > spinnerOffsetTop;
+  }
+
+  getSkSpinnerName() {
+    return "sk-spinner-" + super.getSpinnerName().toLowerCase();
+  }
+}.register('spinnerList'));

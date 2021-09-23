@@ -22,6 +22,14 @@ Template.memberMenuPopup.helpers({
       return false;
     }
   },
+  isNotOAuth2AuthenticationMethod(){
+    currentUser = Meteor.user();
+    if (currentUser) {
+      return currentUser.authenticationMethod != 'OAuth2';
+    } else {
+      return true;
+    }
+  }
 });
 
 Template.memberMenuPopup.events({
@@ -175,17 +183,21 @@ Template.changeLanguagePopup.helpers({
         // fa-IR = Persian (Iran)
         name = 'فارسی/پارسی (ایران‎)';
       } else if (lang.name === 'de-CH') {
-        name = 'Schwiizerdütsch';
+        name = 'Deutsch (Schweiz)';
       } else if (lang.name === 'fr-BE') {
         name = 'Français (Belgique)';
       } else if (lang.name === 'fr-CA') {
         name = 'Français (Canada)';
+      } else if (lang.name === 'fr-CH') {
+        name = 'Français (Schweiz)';
       } else if (lang.name === 'ig') {
         name = 'Igbo';
       } else if (lang.name === 'lv') {
         name = 'Latviešu';
       } else if (lang.name === 'latviešu valoda') {
         name = 'Latviešu';
+      } else if (lang.name === 'en-IT') {
+        name = 'English (Italy)';
       } else if (lang.name === 'Español') {
         name = 'español';
       } else if (lang.name === 'es_419') {
